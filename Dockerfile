@@ -2,16 +2,21 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 
-# Copy only the files required to download dependencies first
+# Copy only the files required to download dependencies first (speeds caching)
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
-# Make the mvnw executable
+# Make the mvnw executable (initial; will set again after copying full repo)
 RUN chmod +x mvnw
 
-# Download dependencies and build the application (no go-offline)
+# Copy the rest of the source (this may overwrite mvnw's mode on some filesystems)
 COPY . .
+
+# Ensure mvnw is executable after full copy (fixes permission lost by COPY)
+RUN chmod +x mvnw
+
+# Build the application (skip tests to speed up)
 RUN ./mvnw -B -DskipTests package
 
 # ---- RUNTIME STAGE ----
