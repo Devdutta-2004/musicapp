@@ -7,19 +7,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 /**
- * Clean Lyrics REST controller.
- *
- * Endpoints:
- *  GET /api/lyrics?songId=123          -> returns { songId, lyrics, source }
- *  GET /api/lyrics/{songId}            -> same as above
- *  POST /api/lyrics                    -> create or update; body: { songId, lyrics, source? }
- *  DELETE /api/lyrics/{songId}         -> delete lyrics for songId
+ * LyricsController — compatible with your Lyrics model (uses getLyrics()/setLyrics()).
  */
 @RestController
 @RequestMapping("/api/lyrics")
@@ -39,7 +32,6 @@ public class LyricsController {
         public String lyrics;      // text content
         public String source;      // optional metadata
 
-        // empty constructor needed by Jackson
         public LyricsRequest() {}
     }
 
@@ -54,7 +46,6 @@ public class LyricsController {
 
     /**
      * GET /api/lyrics?songId=...
-     * Returns a stable JSON object - lyrics always present (empty string when missing).
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getByQuery(@RequestParam Long songId) {
@@ -62,12 +53,9 @@ public class LyricsController {
             Optional<Lyrics> opt = lyricsRepository.findById(songId);
             if (opt.isPresent()) {
                 Lyrics l = opt.get();
-                // support both possible field names (lyrics_text / lyrics) in entity getters
-                String text = l.getLyrics() != null ? l.getLyrics() :
-                              (l.getLyricsText() != null ? l.getLyricsText() : "");
+                String text = l.getLyrics() != null ? l.getLyrics() : "";
                 return ResponseEntity.ok(buildResponse(songId, text, l.getSource()));
             } else {
-                // stable empty response when missing
                 return ResponseEntity.ok(buildResponse(songId, "", null));
             }
         } catch (Exception ex) {
@@ -79,7 +67,6 @@ public class LyricsController {
 
     /**
      * GET /api/lyrics/{songId}
-     * Same as query version.
      */
     @GetMapping("/{songId}")
     public ResponseEntity<Map<String, Object>> getByPath(@PathVariable Long songId) {
@@ -89,7 +76,6 @@ public class LyricsController {
     /**
      * POST /api/lyrics
      * Body: { songId, lyrics, source? }
-     * Creates or updates the lyrics entry for the given songId.
      */
     @PostMapping
     public ResponseEntity<Map<String, Object>> createOrUpdate(@RequestBody LyricsRequest req) {
@@ -106,22 +92,15 @@ public class LyricsController {
             Lyrics saved;
             if (existing.isPresent()) {
                 Lyrics e = existing.get();
-                // Try both setter names to match your entity (safe if one exists)
                 e.setLyrics(incomingText);
-                // if your entity had lyricsText field, setter above might not exist — but earlier code used setLyrics so it's OK
                 e.setSource(source);
-                // optional: set updated time if your entity supports it
                 saved = lyricsRepository.save(e);
             } else {
-                // assume Lyrics has constructor Lyrics(Long songId, String lyrics, String source)
                 Lyrics l = new Lyrics(req.songId, incomingText, source);
                 saved = lyricsRepository.save(l);
             }
 
-            // Normalize output: prefer lyrics_text field if exists; otherwise lyrics
-            String text = saved.getLyrics() != null ? saved.getLyrics()
-                          : (saved.getLyricsText() != null ? saved.getLyricsText() : "");
-
+            String text = saved.getLyrics() != null ? saved.getLyrics() : "";
             Map<String, Object> response = new HashMap<>();
             response.put("ok", true);
             response.put("entry", buildResponse(saved.getSongId(), text, saved.getSource()));
