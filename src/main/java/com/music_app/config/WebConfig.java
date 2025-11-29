@@ -29,10 +29,8 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins(
-                    "http://localhost:5173",  // <--- ADD THIS (Vite Default)
-                    "http://localhost:5174",  // <--- ADD THIS (Just in case)
-                    "http://localhost:3000",  // Keep this for older React apps
-                    "https://your-frontend-domain.vercel.app" // IMPORTANT: Replace this with your actual deployed URL later
+                    "http://localhost:5173",                                      // Localhost for development
+                    "https://musicapp-frontend-devduttas-projects.vercel.app"     // <--- YOUR EXACT VERCEL URL (No trailing slash!)
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
