@@ -118,16 +118,16 @@ public class SongController {
     private Long parseUserId(Long headerUserId) {
         return headerUserId == null ? null : headerUserId;
     }
-
+    //search songs
     @GetMapping("/search")
     public List<SongDto> search(@RequestParam("q") String q,
                                 @RequestHeader(value = "X-User-Id", required = false) Long userIdHeader) {
 
-        String ql = q == null ? "" : q.toLowerCase();
-        List<Song> matched = songRepository.findAll().stream()
-                .filter(s -> (s.getTitle() != null && s.getTitle().toLowerCase().contains(ql)) ||
-                        (s.getArtist() != null && s.getArtist().getName() != null && s.getArtist().getName().toLowerCase().contains(ql)))
-                .collect(Collectors.toList());
+        String ql = q == null ? "" : q.trim();
+        if (ql.isEmpty()) return List.of();
+
+        // FIX: Use the efficient database query instead of loading everything
+        List<Song> matched = songRepository.findByTitleContainingIgnoreCaseOrArtistNameContainingIgnoreCase(ql, ql);
 
         Long userId = parseUserId(userIdHeader);
 
