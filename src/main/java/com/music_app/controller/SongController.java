@@ -11,6 +11,8 @@ import com.music_app.repository.ArtistRepository;
 import com.music_app.repository.LikeRepository;
 import com.music_app.repository.SongRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest; // <--- ADDED
+import org.springframework.data.domain.Sort;        // <--- ADDED
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +35,6 @@ public class SongController {
     @Value("${r2.bucket-name}")
     private String bucketName;
 
-    // CHANGED: Matches the variable in your screenshot
     @Value("${FILES_BASE_URL}") 
     private String filesBaseUrl;
 
@@ -114,9 +115,6 @@ public class SongController {
         return (filename != null && filename.contains(".")) ? filename.substring(filename.lastIndexOf('.')) : "";
     }
     
-    // ... (Keep the rest of your Get/List/Search methods here) ...
-    // Make sure you include the search, list, getOne, and like/unlike methods!
-    
     private Long parseUserId(Long headerUserId) {
         return headerUserId == null ? null : headerUserId;
     }
@@ -143,11 +141,15 @@ public class SongController {
                 .collect(Collectors.toList());
     }
 
+    // --- OPTIMIZED LIST METHOD ---
     @GetMapping
     public List<SongDto> list(@RequestHeader(value = "X-User-Id", required = false) Long userIdHeader) {
         Long userId = parseUserId(userIdHeader);
 
-        return songRepository.findAll().stream()
+        // FIX: Fetch only the newest 100 songs
+        var pageable = PageRequest.of(0, 100, Sort.by("id").descending());
+
+        return songRepository.findAll(pageable).stream()
                 .map(s -> {
                     int count = likeRepository.countBySongId(s.getId());
                     boolean liked = (userId != null) &&
@@ -203,6 +205,7 @@ public class SongController {
         int count = likeRepository.countBySongId(id);
         return Map.of("liked", false, "likeCount", count);
     }
+    
     @GetMapping("/ping")
     public String ping() {
         return "Pong!";
